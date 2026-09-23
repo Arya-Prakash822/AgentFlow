@@ -1,0 +1,63 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    container_name: agentflow-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: agentflow
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - agentflow-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: agentflow-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - agentflow-network
+
+  backend:
+    build: ./backend
+    container_name: agentflow-backend
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./backend/.env
+    volumes:
+      - ./backend:/app
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - agentflow-network
+
+  frontend:
+    build: ./frontend
+    container_name: agentflow-frontend
+    ports:
+      - "3000:3000"
+    env_file:
+      - ./frontend/.env
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+    networks:
+      - agentflow-network
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  agentflow-network:
+    driver: bridge
